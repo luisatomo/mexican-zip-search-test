@@ -33,9 +33,9 @@ class ZipController extends Controller
                 500);
         }
 
-        $searchValue = sprintf("%'.05d", $zip);
-
+        $searchValue = (int)$zip;
         $settlements = Zip::where('d_codigo', '=', $searchValue)->get();
+
         $result = DataHelper::format($settlements);
 
         return response()->json($result);
