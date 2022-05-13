@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\DataHelper;
+use App\Models\Zip;
+use Dflydev\DotAccessData\Data;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -31,6 +33,11 @@ class ZipController extends Controller
                 500);
         }
 
-        return response()->json(DataHelper::search($zip));
+        $searchValue = sprintf("%'.05d", $zip);
+
+        $settlements = Zip::where('d_codigo', '=', $searchValue)->get();
+        $result = DataHelper::format($settlements);
+
+        return response()->json($result);
     }
 }

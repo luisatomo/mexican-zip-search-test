@@ -15,7 +15,7 @@ class DataHelper
      */
     public static function search($zip): array
     {
-        $dbFile = base_path() . env('ZIP_TXT_DB');
+        $dbFile = base_path() . env('ZIP_CSV_DB');
         $delimiter = '|';
         $response = null;
         $settlements = [];
@@ -27,23 +27,27 @@ class DataHelper
             // Headers row
             $headers = fgetcsv($file, 0, $delimiter);
             $found = false;
+            $lineCount = 1;
 
             while (($line = fgetcsv($file, 0, $delimiter)) !== FALSE) {
+                $lineCount++;
                 /**
                  * Search requested zip
                  */
                 if (isset($line[0]) && $line[0] === $zip) {
-                    $settlements[] = $line;
+                    $settlements[] = $lineCount;
                     $found = true;
                 } elseif ($found === true) {
                     break;
                 }
+
             }
 
             if ($found) {
-                $response = DataHelper::format($headers, $settlements[0], $settlements);
+                $response = DataHelper::format($settlements);
             }
             fclose($file);
+
         } catch (Exception $e) {
             return [
                 'Error' => [
@@ -56,40 +60,49 @@ class DataHelper
         return $response;
     }
 
-    public static function format($headers, $response, $settlements): array
+    public static function format($settlements): array
     {
         $settlementsToShow = [];
+        $count = 0;
+        $response = null;
 
         foreach ($settlements as $settlement) {
+            $count = $count + 1;
+            if ($count === 1) {
+                $response = $settlement;
+            }
             $settlementsToShow[] = [
-                'key' => DataHelper::intOrNull($settlement[array_search('id_asenta_cpcons', $headers)]),
-                'name' => strtoupper(DataHelper::clean($settlement[array_search('d_asenta', $headers)])),
-                'zone_type' => strtoupper(DataHelper::clean($settlement[array_search('d_zona', $headers)])),
+                'key' => $settlement->id_asenta_cpcons,
+                'name' => strtoupper(DataHelper::clean($settlement->d_asenta)),
+                'zone_type' => strtoupper(DataHelper::clean($settlement->d_zona)),
                 'settlement_type' => [
-                    'name' => DataHelper::clean($settlement[array_search('d_tipo_asenta', $headers)]),
-                ]
+                    'name' => DataHelper::clean($settlement->d_tipo_asenta),
+                ],
             ];
         }
 
+        if (!$response) {
+            return [];
+        }
+
         return [
-            'zip_code' => $response[array_search('d_codigo', $headers)],
-            'locality' => strtoupper(DataHelper::clean($response[array_search('d_ciudad', $headers)])),
+            'zip_code' => $response->d_codigo,
+            'locality' => strtoupper(DataHelper::clean($response->d_ciudad)),
             'federal_entity' => [
-                'key' => DataHelper::intOrNull($response[array_search('c_estado', $headers)]),
-                'name' => strtoupper(DataHelper::clean($response[array_search('d_estado', $headers)])),
-                'code' => DataHelper::intOrNull($response[array_search('c_CP', $headers)]),
+                'key' => $response->c_estado,
+                'name' => strtoupper(DataHelper::clean($response->d_estado)),
+                'code' => $response->c_CP,
             ],
             'settlements' => $settlementsToShow,
             'municipality' => [
-                'key' => DataHelper::intOrNull($response[array_search('c_mnpio', $headers)]),
-                'name' => strtoupper(DataHelper::clean($response[array_search('D_mnpio', $headers)])),
+                'key' => $response->c_mnpio,
+                'name' => strtoupper(DataHelper::clean($response->D_mnpio)),
             ],
         ];
     }
 
     public static function clean($string)
     {
-        $string = utf8_encode($string);
 
         $string = str_replace(
             array('á', 'à', 'ä', 'â', 'ª', 'Á', 'À', 'Â', 'Ä'),
